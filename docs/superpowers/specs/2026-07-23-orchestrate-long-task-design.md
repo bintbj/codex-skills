@@ -1,27 +1,27 @@
-# Orchestrate Long Task Skill Design
+# Orchestrate Long Task Skill 设计
 
-Date: 2026-07-23
+日期：2026-07-23
 
-## Purpose
+## 目的
 
-Create a reusable Codex Skill named `orchestrate-long-task` that converts an
-already-running, very large task into a durable Git-backed workflow. The
-workflow must survive changes in account, chat, model, and reasoning effort
-without depending on access to the previous account's conversation history.
+创建一个名为 `orchestrate-long-task` 的可复用 Codex Skill，将一个已经
+开始执行的超大任务转换为由 Git 持久化的工作流。即使更换账号、对话、
+模型或推理强度，该工作流也必须能够继续运行，而且不能依赖访问上一个
+账号的对话历史。
 
-The first account may use high reasoning effort to plan, switch to lower
-reasoning effort for bounded execution, and hand work to another account when
-usage is running low. Roles belong to workflow phases, not to accounts.
+第一个账号可以先用高推理强度完成规划，再切换到较低推理强度执行边界
+明确的工作，并在用量即将不足时把任务交接给另一个账号。角色属于工作流
+阶段，而不属于某个固定账号。
 
-## Repository
+## 代码仓库
 
-Publish the Skill in a new public GitHub repository:
+将该 Skill 发布到新的公开 GitHub 仓库：
 
 ```text
 bintbj/codex-skills
 ```
 
-The repository will use the MIT license and initially contain:
+仓库使用 MIT 许可证，初始结构如下：
 
 ```text
 codex-skills/
@@ -54,32 +54,29 @@ codex-skills/
                     └── latest.md
 ```
 
-Files such as `README.md` and `LICENSE` belong to the repository root, not to
-the Skill folder.
+`README.md` 和 `LICENSE` 等文件属于仓库根目录，不放入 Skill 目录。
 
-## Design Principles
+## 设计原则
 
-1. **Git is the source of truth.** Chats are disposable execution contexts.
-2. **Failure must be bounded.** Unexpected quota exhaustion may lose the
-   current small step, but not the plan or completed work.
-3. **Accounts do not own roles.** Any account may plan, execute, verify,
-   integrate, or resume.
-4. **Reasoning effort follows uncertainty.** High effort is reserved for
-   planning, ambiguity, repeated failure, architectural changes, integration,
-   and final acceptance.
-5. **Execution tasks are atomic.** A worker receives a bounded scope, owned
-   paths, dependencies, verification commands, and a definition of done.
-6. **State transitions are explicit.** The Skill does not infer completion from
-   prose alone.
-7. **No hidden machine-local handoff state.** Portable commits and files are
-   preferred over Git stash or uncommitted changes.
-8. **No quota circumvention automation.** The Skill coordinates authorized
-   accounts and supported usage; it does not automate login, credential
-   sharing, or rate-limit bypass.
+1. **Git 是唯一事实来源。** 对话只是可丢弃的临时执行上下文。
+2. **故障影响必须有边界。** 意外耗尽额度时，最多损失当前一个很小的
+   步骤，不能丢失总体计划或已经完成的工作。
+3. **账号不拥有固定角色。** 任意账号都可以负责规划、执行、验证、集成
+   或恢复。
+4. **推理强度跟随不确定性。** 高推理只用于规划、歧义处理、重复失败、
+   架构变更、集成和最终验收。
+5. **执行任务必须原子化。** Worker 接收的任务必须具有明确范围、所属
+   路径、依赖、验证命令和完成定义。
+6. **状态转换必须显式发生。** Skill 不能仅根据自然语言描述推断任务已经
+   完成。
+7. **不能依赖机器本地的隐藏交接状态。** 优先使用可移植的提交和文件，
+   不使用 Git stash 或未提交修改作为跨账号交接手段。
+8. **不实现绕过额度限制的自动化。** Skill 只协调经过授权的账号和受支持
+   的用量方式，不自动登录、不共享凭证，也不绕过速率限制。
 
-## Runtime Workspace
+## 目标项目中的运行时工作区
 
-When initialized inside a target project, the Skill creates:
+在目标项目中初始化后，Skill 创建：
 
 ```text
 .task-orchestrator/
@@ -95,13 +92,12 @@ When initialized inside a target project, the Skill creates:
 
 ### `mission.md`
 
-Contains the stable objective, scope, constraints, non-goals, and measurable
-completion criteria. A replan may clarify the mission but must not silently
-expand it.
+保存稳定的任务目标、范围、约束、非目标和可度量的完成标准。重新规划可以
+澄清任务目标，但不能静默扩大范围。
 
 ### `state.json`
 
-Contains the machine-readable current state. Its required fields are:
+保存机器可读的当前状态。必填字段如下：
 
 ```json
 {
@@ -121,302 +117,289 @@ Contains the machine-readable current state. Its required fields are:
 }
 ```
 
-The implementation will document allowed enum values and validate field types,
-cross-field invariants, referenced task files, Git state, and commit existence.
+实现时需要记录允许使用的枚举值，并验证字段类型、跨字段约束、引用的任务
+文件、Git 状态以及提交是否存在。
 
 ### `plan.md`
 
-Contains the task graph, dependencies, task status, integration order, and the
-reason each task boundary is safe.
+保存任务关系图、依赖关系、任务状态、集成顺序，以及每个任务边界为何可以
+安全独立执行。
 
 ### `tasks/TASK-NNN.md`
 
-Each task contract contains:
+每份任务契约包含：
 
-- objective;
-- prerequisites and base commit;
-- owned paths;
-- forbidden paths;
-- implementation constraints;
-- acceptance commands;
-- expected evidence;
-- dependency and integration notes;
-- completion status.
+- 目标；
+- 前置条件和基础提交；
+- 允许修改的路径；
+- 禁止修改的路径；
+- 实现约束；
+- 验收命令；
+- 预期证据；
+- 依赖和集成说明；
+- 完成状态。
 
 ### `decisions/`
 
-Stores durable architecture decisions that future accounts must not
-re-litigate without an explicit replan.
+保存持久化架构决定。后续账号不得反复讨论这些决定，除非显式进入重新规划
+阶段。
 
 ### `handoffs/latest.md`
 
-Provides the single entry point for a new account. It records:
+作为新账号接管任务的唯一入口，记录：
 
-- mission and current phase;
-- branch and commit identities;
-- completed work;
-- verification results;
-- unresolved risks;
-- exact next action;
-- files that must be read;
-- whether high or low reasoning is recommended and why.
+- 任务目标和当前阶段；
+- 分支与提交标识；
+- 已完成工作；
+- 验证结果；
+- 未解决风险；
+- 精确的下一步动作；
+- 必须读取的文件；
+- 推荐使用高推理还是低推理，以及推荐原因。
 
-Previous handoffs are copied to `archive/` before `latest.md` is replaced.
+生成新的 `latest.md` 之前，先把上一份交接文件复制到 `archive/`。
 
-## State Machine
+## 状态机
 
 ```text
 bootstrap
     ↓
-plan (high reasoning)
+plan（高推理）
     ↓
-execute (low reasoning by default)
+execute（默认低推理）
     ↓
-verify (low reasoning by default)
+verify（默认低推理）
     ↓
 checkpoint
-    ├── next bounded task → execute
-    ├── ambiguity or repeated failure → replan (high reasoning)
-    ├── usage warning or account switch → handoff
-    └── all tasks complete → integrate (high reasoning)
-                                      ↓
-                                  final verify
-                                      ↓
-                                    complete
+    ├── 存在下一个边界明确的任务 → execute
+    ├── 出现歧义或重复失败 → replan（高推理）
+    ├── 出现额度警告或切换账号 → handoff
+    └── 所有任务完成 → integrate（高推理）
+                               ↓
+                           final_verify
+                               ↓
+                            complete
 ```
 
-Allowed phases are `bootstrap`, `plan`, `execute`, `verify`, `checkpoint`,
-`handoff`, `replan`, `integrate`, `final_verify`, `complete`, and `blocked`.
+允许的阶段包括 `bootstrap`、`plan`、`execute`、`verify`、`checkpoint`、
+`handoff`、`replan`、`integrate`、`final_verify`、`complete` 和
+`blocked`。
 
-Every phase transition updates `state.json`. Transitions that complete work
-also require verification evidence and a Git commit.
+每次阶段转换都必须更新 `state.json`。会将工作标记为完成的转换，还必须
+同时具有验证证据和 Git 提交。
 
-## Role and Reasoning Policy
+## 角色和推理强度策略
 
-The Skill supports four logical roles within one workflow:
+该 Skill 在同一个工作流中支持四个逻辑角色：
 
-- **Coordinator:** reconstructs the task, establishes the mission, decomposes
-  work, and selects safe task boundaries.
-- **Worker:** implements exactly one task contract.
-- **Verifier:** runs the contract's acceptance checks and records evidence.
-- **Integrator:** combines completed tasks, resolves cross-task conflicts, and
-  performs final acceptance.
+- **Coordinator：**重建任务全貌、建立任务目标、拆解工作，并选择安全的
+  任务边界。
+- **Worker：**严格执行一份任务契约。
+- **Verifier：**运行任务契约规定的验收检查并记录证据。
+- **Integrator：**组合已完成任务、解决跨任务冲突，并执行最终验收。
 
-Use high reasoning effort for:
+以下情况使用高推理强度：
 
-- initial planning or reconstruction;
-- dependency and interface design;
-- contradictory repository or task state;
-- two failed attempts at the same acceptance criterion;
-- changes to an approved architecture decision;
-- integration and final acceptance.
+- 初次规划或重建任务现场；
+- 依赖关系和接口设计；
+- 仓库状态与任务状态互相矛盾；
+- 同一验收条件连续失败两次；
+- 修改已经批准的架构决定；
+- 集成与最终验收。
 
-Use low reasoning effort for:
+以下情况使用低推理强度：
 
-- implementing an approved atomic task;
-- adding bounded tests or documentation;
-- running specified verification commands;
-- updating checkpoints and handoff records.
+- 实现已经批准的原子任务；
+- 添加范围明确的测试或文档；
+- 运行已经指定的验证命令；
+- 更新检查点和交接记录。
 
-The Skill recommends reasoning effort in `state.json` and the handoff, but does
-not claim to change account settings automatically.
+Skill 在 `state.json` 和交接文件中推荐推理强度，但不声称可以自动修改账号
+设置。
 
-## Operations
+## 操作流程
 
-### Initialize
+### 初始化（Initialize）
 
-1. Inspect the current conversation context, repository, Git history, working
-   tree, existing plans, and tests.
-2. Distinguish verified facts from inferred or missing information.
-3. Refuse to mark unverified work complete.
-4. Create `.task-orchestrator/` from the bundled template.
-5. Write the mission, current state, initial plan, first task contracts, and
-   initial handoff.
-6. Validate the workspace before proceeding.
+1. 检查当前对话上下文、仓库、Git 历史、工作区、现有计划和测试。
+2. 区分已经验证的事实、推断和缺失信息。
+3. 不得把未经验证的工作标记为完成。
+4. 根据内置模板创建 `.task-orchestrator/`。
+5. 写入任务目标、当前状态、初始计划、第一批任务契约和初始交接文件。
+6. 继续执行前先验证工作区。
 
-Initialization must preserve existing user changes and must not initialize Git
-inside a target project without user authorization.
+初始化必须保留用户已有修改。未经用户授权，不得在目标项目中初始化 Git。
 
-### Resume
+### 恢复（Resume）
 
-1. Read `AGENTS.md` and repository-local instructions.
-2. Read `mission.md`, `state.json`, `handoffs/latest.md`, the active task, and
-   relevant decisions.
-3. Compare the recorded branch and commits with actual Git state.
-4. Run the workspace validator.
-5. Stop on unexplained divergence rather than overwriting either side.
-6. Continue the recorded `next_action` using the recommended reasoning effort.
+1. 读取 `AGENTS.md` 和仓库本地指令。
+2. 读取 `mission.md`、`state.json`、`handoffs/latest.md`、当前任务和相关
+   决策。
+3. 比较记录的分支和提交与实际 Git 状态。
+4. 运行工作区验证器。
+5. 遇到无法解释的分歧时停止，不覆盖任何一方。
+6. 按照推荐的推理强度继续执行记录的 `next_action`。
 
-### Execute
+### 执行（Execute）
 
-1. Select only a ready task whose dependencies are satisfied.
-2. Confirm owned and forbidden paths.
-3. Make the minimum scoped change.
-4. Run the task's acceptance commands.
-5. Route to `checkpoint`, `replan`, or `blocked` based on evidence.
+1. 只选择依赖已经满足、可以开始的任务。
+2. 确认允许修改和禁止修改的路径。
+3. 实施满足目标所需的最小范围修改。
+4. 运行任务规定的验收命令。
+5. 根据证据进入 `checkpoint`、`replan` 或 `blocked`。
 
-### Checkpoint
+### 检查点（Checkpoint）
 
-A lightweight checkpoint is required after:
+以下事件发生后必须创建轻量检查点：
 
-- an atomic task completes;
-- an acceptance result changes;
-- a durable decision is made;
-- a plan or interface changes;
-- a risky operation is about to begin.
+- 一个原子任务完成；
+- 某项验收结果发生变化；
+- 作出需要长期保留的决定；
+- 计划或接口发生变化；
+- 即将执行高风险操作。
 
-The checkpoint records the current diff, verification evidence, state, and
-next action. Completed work must be committed. Incomplete but valuable work may
-use a clearly labeled WIP commit when an account switch is imminent.
+检查点记录当前差异、验证证据、状态和下一步动作。已经完成的工作必须提交。
+切换账号在即且未完成的工作仍有保留价值时，可以创建带有清晰标识的 WIP
+提交。
 
-### Handoff
+### 交接（Handoff）
 
-A full handoff is triggered when:
+以下事件触发完整交接：
 
-- the user requests account switching;
-- the user reports a usage warning;
-- the current account is about to stop;
-- execution is blocked;
-- the workflow enters replan or integration.
+- 用户要求切换账号；
+- 用户报告出现额度警告；
+- 当前账号即将停止工作；
+- 执行受到阻塞；
+- 工作流即将进入重新规划或集成阶段。
 
-The Skill validates the workspace, archives the previous handoff, renders a
-new `latest.md`, commits portable state when authorized, and returns a compact
-resume prompt for the next account.
+Skill 验证工作区、归档上一份交接、生成新的 `latest.md`，并在获得授权时
+提交可移植状态，最后为下一个账号返回一段精简的恢复提示词。
 
-### Replan
+### 重新规划（Replan）
 
-Replan is required after two failed attempts at the same acceptance criterion,
-an invalid task contract, a discovered dependency conflict, or a requested
-scope change. Replanning must preserve evidence and explain which previous
-assumption changed.
+同一验收条件连续失败两次、任务契约无效、发现依赖冲突或用户要求变更范围
+时，必须重新规划。重新规划必须保留已有证据，并解释此前哪一项假设发生了
+变化。
 
-### Integrate
+### 集成（Integrate）
 
-Integration verifies task dependencies, commit ancestry, conflicts, full test
-results, mission criteria, and unresolved blockers. The mission may be marked
-complete only when every required criterion has recorded evidence.
+集成阶段验证任务依赖、提交祖先关系、冲突、完整测试结果、任务完成标准和
+未解决阻塞。只有每一项必需标准都有证据时，才能把任务标记为完成。
 
-## Deterministic Scripts
+## 确定性脚本
 
-All scripts use Python's standard library and support `--help`.
+所有脚本只使用 Python 标准库，并支持 `--help`。
 
 ### `init_workspace.py`
 
-- takes a target project path;
-- refuses to overwrite an existing `.task-orchestrator/`;
-- copies the bundled template;
-- records detected Git metadata when available;
-- produces a concise initialization summary.
+- 接收目标项目路径；
+- 如果 `.task-orchestrator/` 已经存在，则拒绝覆盖；
+- 复制内置模板；
+- 在 Git 可用时记录检测到的 Git 元数据；
+- 输出精简的初始化摘要。
 
 ### `validate_workspace.py`
 
-- validates JSON structure and enum values;
-- validates referenced task and handoff files;
-- compares recorded branch and commits with Git;
-- detects missing required sections and contradictory states;
-- exits nonzero with actionable messages on failure.
+- 验证 JSON 结构和枚举值；
+- 验证引用的任务文件和交接文件；
+- 比较记录的分支及提交与实际 Git 状态；
+- 检测缺失的必要章节和互相矛盾的状态；
+- 验证失败时以非零状态退出，并提供可执行的错误信息。
 
 ### `render_handoff.py`
 
-- reads validated state and the active task;
-- archives the existing handoff;
-- generates `handoffs/latest.md` deterministically;
-- does not commit, push, switch branches, or modify source files.
+- 读取已经通过验证的状态和当前任务；
+- 归档现有交接文件；
+- 以确定性方式生成 `handoffs/latest.md`；
+- 不提交、不推送、不切换分支，也不修改项目源文件。
 
-## Failure Handling
+## 故障处理
 
-- **Unexpected quota exhaustion:** resume from the latest committed checkpoint.
-- **Dirty working tree during resume:** report the diff and stop before
-  overwriting or switching branches.
-- **Recorded commit is missing:** enter `blocked` and request the correct remote,
-  branch, or commit.
-- **Task and state disagree:** validation fails; high-reasoning replan is
-  required.
-- **Acceptance fails once:** remain in execution and record the failure.
-- **Acceptance fails twice for the same cause:** enter `replan`.
-- **Concurrent workers modify overlapping paths:** stop integration and require
-  explicit reconciliation.
-- **No Git repository:** initialization may create coordination files, but
-  portable multi-account handoff remains blocked until Git is initialized and
-  a shared remote exists.
-- **Secrets detected in coordination files:** stop before commit and require
-  removal. Handoffs must not contain credentials, tokens, or private keys.
+- **意外耗尽额度：**从最近一次已经提交的检查点恢复。
+- **恢复时工作区不干净：**报告差异，并在覆盖文件或切换分支之前停止。
+- **找不到记录的提交：**进入 `blocked`，要求提供正确的远程仓库、分支或
+  提交。
+- **任务文件与状态不一致：**验证失败，必须使用高推理重新规划。
+- **验收第一次失败：**留在执行阶段并记录失败。
+- **同一原因导致验收连续失败两次：**进入 `replan`。
+- **并发 Worker 修改重叠路径：**停止集成并要求显式协调。
+- **不存在 Git 仓库：**可以创建协调文件，但在初始化 Git 并配置共享远程
+  仓库之前，阻止可移植的多账号交接。
+- **协调文件中检测到秘密信息：**提交前停止并要求移除。交接文件不得包含
+  凭证、令牌或私钥。
 
-## Validation Strategy
+## 验证策略
 
-### Static Skill Validation
+### Skill 静态验证
 
-Run the official Skill `quick_validate.py` against
-`skills/orchestrate-long-task`.
+对 `skills/orchestrate-long-task` 运行官方 Skill `quick_validate.py`。
 
-### Script Tests
+### 脚本测试
 
-Use Python `unittest` to cover:
+使用 Python `unittest` 覆盖：
 
-- clean initialization;
-- overwrite refusal;
-- valid and invalid state schemas;
-- missing task references;
-- branch or commit divergence;
-- deterministic handoff generation;
-- handoff archival;
-- nonzero exits and actionable errors.
+- 干净初始化；
+- 拒绝覆盖；
+- 有效和无效的状态结构；
+- 缺失任务引用；
+- 分支或提交发生分歧；
+- 确定性交接文件生成；
+- 交接文件归档；
+- 非零退出状态和可执行错误信息。
 
-### End-to-End Smoke Test
+### 端到端冒烟测试
 
-Create a temporary Git repository and verify:
+创建临时 Git 仓库并验证：
 
-1. initialize a workspace;
-2. populate a mission and atomic task;
-3. validate the workspace;
-4. simulate execution and create a checkpoint commit;
-5. render a handoff;
-6. clone or create a second worktree;
-7. resume using only repository files;
-8. detect an intentional divergence;
-9. resolve it and complete final validation.
+1. 初始化工作区；
+2. 填写任务目标和原子任务；
+3. 验证工作区；
+4. 模拟执行并创建检查点提交；
+5. 生成交接文件；
+6. 克隆仓库或创建第二个 worktree；
+7. 只根据仓库文件恢复工作；
+8. 检测人为制造的状态分歧；
+9. 解决分歧并完成最终验证。
 
-### Manual Trigger Tests
+### 手动触发测试
 
-Confirm the Skill triggers for requests to:
+确认以下请求会触发该 Skill：
 
-- migrate an ongoing oversized task;
-- continue work from another Codex account;
-- prepare a quota-safe checkpoint;
-- resume a multi-account task;
-- replan after repeated failures;
-- integrate work produced by multiple accounts.
+- 迁移一个正在进行中的超大任务；
+- 从另一个 Codex 账号继续工作；
+- 创建能够抵御额度耗尽的检查点；
+- 恢复多账号任务；
+- 在重复失败后重新规划；
+- 集成由多个账号产生的工作。
 
-Confirm it does not trigger for ordinary small, self-contained coding tasks.
+确认普通、短小且自包含的编码任务不会触发该 Skill。
 
-Subagent forward-testing is outside the first implementation because no
-delegation was requested. Local validation and smoke tests are required before
-publication.
+第一版不进行子代理前向测试，因为用户没有要求委派。发布之前必须通过本地
+验证和冒烟测试。
 
-## Publishing Workflow
+## 发布流程
 
-1. Implement and validate locally.
-2. Review `git status` and the complete diff.
-3. Create an intentional initial commit.
-4. Re-authenticate GitHub CLI account `bintbj`.
-5. Create `bintbj/codex-skills` as a public repository.
-6. Push the validated commit to the default branch.
-7. Verify repository visibility, default branch, files, and installation path.
+1. 在本地完成实现和验证。
+2. 检查 `git status` 和完整差异。
+3. 创建目的明确的初始提交。
+4. 重新登录 GitHub CLI 账号 `bintbj`。
+5. 创建公开仓库 `bintbj/codex-skills`。
+6. 把已经验证的提交推送到默认分支。
+7. 验证仓库可见性、默认分支、文件和安装路径。
 
-No credentials or local task data may be published.
+不得发布凭证或本地任务数据。
 
-## Acceptance Criteria
+## 验收标准
 
-The work is complete when:
+满足以下全部条件时，工作才算完成：
 
-1. `bintbj/codex-skills` exists publicly.
-2. The repository contains the MIT license and the documented Skill layout.
-3. `SKILL.md` has valid frontmatter and concise trigger conditions.
-4. All three scripts run with only the Python standard library.
-5. Unit tests and the temporary-repository smoke test pass.
-6. Official Skill validation passes.
-7. A fresh Codex session can initialize or resume from repository artifacts
-   without access to the previous account's conversation.
-8. The Skill never claims work is complete without verification evidence.
-9. The Skill does not automate account login, credential sharing, or quota
-   bypass.
+1. `bintbj/codex-skills` 已经公开存在。
+2. 仓库包含 MIT 许可证和设计中规定的 Skill 结构。
+3. `SKILL.md` 具有有效的 frontmatter 和精简、准确的触发条件。
+4. 三个脚本只依赖 Python 标准库即可运行。
+5. 单元测试和临时仓库端到端冒烟测试全部通过。
+6. 官方 Skill 验证通过。
+7. 全新的 Codex 会话无需访问上一个账号的对话，也可以仅根据仓库产物完成
+   初始化或恢复。
+8. Skill 不会在缺少验证证据时声称任务已经完成。
+9. Skill 不会自动登录账号、共享凭证或绕过额度限制。
