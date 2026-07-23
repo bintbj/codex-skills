@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "mission_status": "draft",
+  "phase": "bootstrap",
+  "recommended_reasoning": "high",
+  "current_task": null,
+  "base_commit": null,
+  "working_branch": null,
+  "last_checkpoint_commit": null,
+  "next_action": "Capture the verified mission and create the first task contract.",
+  "blocked": false,
+  "blockers": [],
+  "failed_attempts": 0,
+  "updated_at": "1970-01-01T00:00:00Z"
+}
