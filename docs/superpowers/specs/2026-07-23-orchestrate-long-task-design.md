@@ -27,6 +27,12 @@ bintbj/codex-skills
 codex-skills/
 ├── README.md
 ├── LICENSE
+├── docs/
+│   └── superpowers/
+│       ├── specs/
+│       │   └── 2026-07-23-orchestrate-long-task-design.md
+│       └── plans/
+│           └── 2026-07-23-orchestrate-long-task.md
 ├── tests/
 │   └── test_orchestrate_long_task.py
 └── skills/
