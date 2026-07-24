@@ -36,5 +36,10 @@ class WorkspaceTests(unittest.TestCase):
     def test_require_clean(self):
         path = self.repo(); init_workspace.initialize(path, TEMPLATE); (path / "dirty").write_text("x")
         self.assertIn("working tree is not clean", validate_workspace.validate_workspace(path, True))
+    def test_skill_promises_minimal_input_and_bundled_script_resolution(self):
+        text = (SKILL / "SKILL.md").read_text()
+        self.assertIn("Do not ask the user to restate this workflow.", text)
+        self.assertIn('python3 "$SKILL_ROOT/scripts/init_workspace.py"', text)
+        self.assertIn("$orchestrate-long-task 接手当前项目", text)
 
 if __name__ == "__main__": unittest.main()
