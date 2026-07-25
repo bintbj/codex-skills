@@ -1,4 +1,4 @@
 interface:
   display_name: "Orchestrate Long Task"
-  short_description: "Safely continue large tasks across accounts"
-  default_prompt: "Use $orchestrate-long-task to inspect this repository and initialize or resume its long-running task with minimal user input."
+  short_description: "Resume isolated long tasks across accounts"
+  default_prompt: "Use $orchestrate-long-task to initialize or resume this mission with Git-backed cross-account isolation."

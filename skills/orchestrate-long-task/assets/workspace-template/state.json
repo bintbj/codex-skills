@@ -1,5 +1,9 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
+  "mission_id": "",
+  "repository_url": "",
+  "repository_id": "",
+  "base_branch": "",
   "mission_status": "draft",
   "phase": "bootstrap",
   "recommended_reasoning": "high",
